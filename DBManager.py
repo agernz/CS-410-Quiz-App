@@ -16,20 +16,73 @@ class DBManager(object):
         err_file = open('errors.txt', 'a')
         with err_file:
             date = "".join(time.strftime('%m/%d/%Y'))
-            err_file.write("Error: {0} > {1} > {2}", date, msg, e)
+            try:
+                err_file.write("Error: {0} > {1} > {2}\n".format(date, msg, e))
+            except Exception as e:
+                # could print something out here
+                pass
 
+    """ Write user credentials to database
 
-    def dbInsertProject(self, name='', description='', start_date='', end_date='', link='', email='', sponsor=''):
+    Returns -1 on error
+    """
+    def storeCredentials(self, username, password, course_id):
         try:
-            last_id = self.cur.lastrowid
-            self.cur.execute('''INSERT INTO app_project(name, description, start_date, end_date, trello_link, email, sponsor)
-                    VALUES(?,?,?,?,?,?,?)''', (name, description, start_date, end_date, link, email, sponsor))
+            last_id = 0
+            self.cur.execute('''INSERT OR REPLACE INTO FIRST_USE(ID, USER, PWD, COURSEID)
+                    VALUES(?,?,?,?)''', (last_id, username, password, course_id))
             self.db.commit()
         except Exception as e:
-            self.log('Failed to insert project {0}'.format(name), e)
+            self.log('Failed to store credentials for {0}'.format(username), e)
+            return -1;
+
+    """ Add a new Quiz to database if it does not already exists
+
+    Returns -1 on error, 0 if Quiz already exists
+    """
+    def storeQuiz(self, nr, date, title):
+        try:
+            cursor = self.cur.execute("SELECT ID FROM QUIZZES")
+            for row in cursor:
+                if row[0] == nr:
+                    return 0
+        except Exception as e:
+            self.log('Failed to get quiz {0} from database'.format(title), e)
+            return -1;
+
+        try:
+            self.cur.execute('''INSERT INTO QUIZZES(ID, NAME, CREATED)
+                    VALUES(?,?,?)''', (nr, title, date))
+            self.db.commit()
+        except Exception as e:
+            self.log('Failed to insert quiz {0}'.format(title), e)
+            return -1;
+
+    """ Adds an array of questions (as tuples) to the database
+
+    Returns -1 on error
+    """
+    def storeQuestions(self, questions):
+        try:
+            self.cur.executemany('''INSERT INTO QUESTIONS(ANSWER, QUESTION, CHOICES, NR, MARKED)
+                    VALUES(?,?,?,?,?)''', questions)
+            self.db.commit()
+        except Exception as e:
+            self.log('Failed to insert question {0}'.format(question), e)
+            return -1;
+
+    """ Gets user credentials from database to login
+
+    Returns -1 on error or a tuple: (username, password, course ID)
+    """
+    def getCredentials(self):
+        try:
+            cursor = self.cur.execute("SELECT * FROM FIRST_USE LIMIT 1")
+            return cursor.fetchone()
+        except Exception as e:
+            self.log('Failed to get user credentials', e)
+            return -1;
 
     def isFirstTime(self):
         cursor = self.cur.execute("SELECT USER from FIRST_USE")
         return cursor.fetchone() is None
-
-    # def authenticate():
