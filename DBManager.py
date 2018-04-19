@@ -68,7 +68,19 @@ class DBManager(object):
                     VALUES(?,?,?,?,?)''', questions)
             self.db.commit()
         except Exception as e:
-            self.log('Failed to insert question {0}'.format(question), e)
+            self.log('Failed to insert questions', e)
+            return -1;
+
+    """ marks a specific queston by setting column MARKED to 1
+
+    Returns -1 on error
+    """
+    def mark_question(self, question):
+        try:
+            self.cur.execute('''UPDATE QUESTIONS SET MARKED=1 WHERE QUESTION=question''')
+            self.db.commit()
+        except Exception as e:
+            self.log('Failed to mark question {0}'.format(question), e)
             return -1;
 
     """ Gets user credentials from database to login
@@ -93,6 +105,26 @@ class DBManager(object):
             return cursor.fetchall()
         except Exception as e:
             self.log('Failed to get quizzes', e)
+            return -1;
+
+    """ Gets a list of questions from the database that
+    match a specific quiz. If quiz_id is 'all', then gets all
+    quiz questions. If quiz_id is 'm', get marked questions
+
+    Returns -1 on error or a list of questions as tuples
+    """
+    def get_questions(self, quiz_id):
+        try:
+            cursor = None
+            if (quiz_id == "all"):
+                cursor = self.cur.execute("SELECT * FROM QUESTIONS")
+            elif (quiz_id == "all"):
+                cursor = self.cur.execute("SELECT * FROM QUESTIONS WHERE MARKED=1")
+            else:
+                cursor = self.cur.execute("SELECT * FROM QUESTIONS WHERE NR={0}".format(quiz_id))
+            return cursor.fetchall()
+        except Exception as e:
+            self.log('Failed to get questions', e)
             return -1;
 
     def is_first_time(self):
