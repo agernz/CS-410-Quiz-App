@@ -13,7 +13,7 @@ class Quiz(object):
         return False
 
     def mark_question(self, db):
-        db.update_question(self.questions[self.index][1])
+        db.mark_question(self.questions[self.index][1])
 
     def next_question(self):
         self.index += 1
