@@ -1,6 +1,7 @@
 from DBManager import *
 from PiazzaQuestions import *
 from Constants import *
+from Quiz import *
 import os, sys
 
 db = DBManager(DB_NAME)
@@ -8,6 +9,11 @@ pq = PiazzaQuestions()
 
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
+
+def check_db_return(result):
+    if (result == -1):
+        print("Database error, check errors.txt for problem.")
+        exit(1)
 
 def choice_is_valid(choice, max):
     if (not choice.isdigit()):
@@ -49,8 +55,8 @@ def register_user():
                 result = 1
 
 def select_quiz():
-    quiz = None
     quizzes = db.get_quizzes()
+    check_db_return(quizzes)
 
     while (1):
         # list all quiz choices
@@ -59,19 +65,36 @@ def select_quiz():
             print("{0}) {1}".format(i + 1, quizzes[i][1]))
         # option for all quizzes
         print("{0}) All".format(i + 2))
-        print("{0}) Back".format(i + 3))
+        # option for marked questions
+        print("{0}) Marked Questions".format(i + 3))
+        # exit option
+        print("{0}) Back".format(i + 4))
 
-        choice = input("Select an option (1-{0}): ".format(i + 3))
+        choice = input("Select an option (1-{0}): ".format(i + 4))
         # check validity of input
         choice.replace(" ", "")
-        choice = choice_is_valid(choice, i + 3)
+        choice = choice_is_valid(choice, i + 4)
         if (choice):
             break
 
-    return quiz
+    if choice == i + 4:
+        return None
+
+    questions = None
+    if choice == i + 2:
+        questions = db.get_questions("all")
+    elif choice == i + 3:
+        questions = db.get_questions("m")
+    else:
+        questions = db.get_questions(quizzes[choice][0])
+
+    check_db_return(questions)
+
+    return Quiz(questions)
 
 def take_quiz(quiz):
     print(quiz)
+    input("stop")
 
 
 def main_menu():
@@ -101,20 +124,20 @@ def main_menu():
 
 
 def main(args):
-    if (db.is_first_time()):
-        register_user()
-
-    else:
-        print("logging in...")
-        if (pq.login_user() == -1):
-            print("login failed")
-            sys.exit(1)
-        print("login succesful!")
-
-        print("Searching Piazza for new quizzes...")
-        pq.find_all_quiz_questions()
-
-    input("Press  enter to continue...")
+    # if (db.is_first_time()):
+    #     register_user()
+    #
+    # else:
+    #     print("logging in...")
+    #     if (pq.login_user() == -1):
+    #         print("login failed")
+    #         sys.exit(1)
+    #     print("login succesful!")
+    #
+    #     print("Searching Piazza for new quizzes...")
+    #     pq.find_all_quiz_questions()
+    #
+    # input("Press  enter to continue...")
 
     main_menu()
 
