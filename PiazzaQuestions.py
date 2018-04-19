@@ -16,8 +16,8 @@ class PiazzaQuestions(object):
 
     Return -1 if fails to login
     """
-    def loginUser(self):
-        creds = self.dbManager.getCredentials()
+    def login_user(self):
+        creds = self.dbManager.get_credentials()
         try:
             self.p.user_login(creds[1], creds[2])
             self.class_id = self.p.network(creds[3])
@@ -67,7 +67,7 @@ class PiazzaQuestions(object):
 
     Return -1 if fails to get all posts
     """
-    def findAllQuizQuestions(self):
+    def find_all_quiz_questions(self):
         try:
             all_posts = self.class_id.iter_all_posts()
         except Exception as e:
@@ -82,7 +82,7 @@ class PiazzaQuestions(object):
                     print("Found: ", date[:date.find('T')], title)
                     post_nr = post['nr']
                     # add quiz
-                    result = self.dbManager.storeQuiz(post_nr, date, title)
+                    result = self.dbManager.store_quiz(post_nr, date, title)
                     if (result == -1):
                         print("Failed to add quiz")
                         continue
@@ -104,7 +104,7 @@ class PiazzaQuestions(object):
                             all_questions.append((question_values[0],
                             question_values[1], question_values[2],
                             post_nr, 0))
-                    self.dbManager.storeQuestions(all_questions)
+                    self.dbManager.store_questions(all_questions)
 
 
     """ Attempt to login user for the first time and then
@@ -113,7 +113,7 @@ class PiazzaQuestions(object):
 
     Return 0 if login fails, -1 if class id is incorrect
     """
-    def firstTimeLogin(self, username, password, class_id):
+    def first_time_login(self, username, password, class_id):
         try:
             self.p.user_login(username, password)
         except Exception as e:
@@ -126,11 +126,11 @@ class PiazzaQuestions(object):
             return -1;
 
         # login and course id succesful, add credentials to database
-        if (self.dbManager.storeCredentials(username, password, class_id) != -1):
+        if (self.dbManager.store_credentials(username, password, class_id) != -1):
             print("Succesfully logged in User!")
         else:
             print("Failed to add new user")
 
         print("Searching Piazza for all quiz questions, this may take a few minutes...")
-        if (self.findAllQuizQuestions() == -1):
+        if (self.find_all_quiz_questions() == -1):
             print("Fialed to add all quiz questions")
