@@ -26,7 +26,7 @@ class DBManager(object):
 
     Returns -1 on error
     """
-    def storeCredentials(self, username, password, course_id):
+    def store_credentials(self, username, password, course_id):
         try:
             last_id = 0
             self.cur.execute('''INSERT OR REPLACE INTO FIRST_USE(ID, USER, PWD, COURSEID)
@@ -40,7 +40,7 @@ class DBManager(object):
 
     Returns -1 on error, 0 if Quiz already exists
     """
-    def storeQuiz(self, nr, date, title):
+    def store_quiz(self, nr, date, title):
         try:
             cursor = self.cur.execute("SELECT ID FROM QUIZZES")
             for row in cursor:
@@ -62,7 +62,7 @@ class DBManager(object):
 
     Returns -1 on error
     """
-    def storeQuestions(self, questions):
+    def store_questions(self, questions):
         try:
             self.cur.executemany('''INSERT INTO QUESTIONS(ANSWER, QUESTION, CHOICES, NR, MARKED)
                     VALUES(?,?,?,?,?)''', questions)
@@ -75,7 +75,7 @@ class DBManager(object):
 
     Returns -1 on error or a tuple: (username, password, course ID)
     """
-    def getCredentials(self):
+    def get_credentials(self):
         try:
             cursor = self.cur.execute("SELECT * FROM FIRST_USE LIMIT 1")
             return cursor.fetchone()
@@ -83,6 +83,18 @@ class DBManager(object):
             self.log('Failed to get user credentials', e)
             return -1;
 
-    def isFirstTime(self):
+    """ Gets a list of quizzes from database
+
+    Returns -1 on error or a list of quizzes as tuples
+    """
+    def get_quizzes(self):
+        try:
+            cursor = self.cur.execute("SELECT * FROM QUIZZES")
+            return cursor.fetchall()
+        except Exception as e:
+            self.log('Failed to get quizzes', e)
+            return -1;
+
+    def is_first_time(self):
         cursor = self.cur.execute("SELECT USER from FIRST_USE")
         return cursor.fetchone() is None
