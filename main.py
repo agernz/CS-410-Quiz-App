@@ -10,6 +10,10 @@ pq = PiazzaQuestions()
 def clear():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def input_wait():
+    input("\nPress enter to continue...")
+    clear()
+
 def check_db_return(result):
     if (result == -1):
         print("Database error, check errors.txt for problem.")
@@ -18,15 +22,13 @@ def check_db_return(result):
 def choice_is_valid(choice, max):
     if (not choice.isdigit()):
         print("Invalid choice selected, please enter a number 1-{0}".format(max))
-        input("Press  enter to continue...")
-        clear()
+        input_wait()
         return 0
 
     choice = int(choice)
     if (choice > max):
         print("Invalid choice selected, please enter a number 1-{0}".format(max))
-        input("Press  enter to continue...")
-        clear()
+        input_wait()
         return 0
     return choice
 
@@ -85,6 +87,11 @@ def select_quiz():
         questions = db.get_questions("all")
     elif choice == i + 3:
         questions = db.get_questions("m")
+        if len(questions) == 0:
+            clear()
+            print("No questions have been marked")
+            input_wait()
+            return None
     else:
         questions = db.get_questions(quizzes[choice][0])
 
@@ -93,9 +100,35 @@ def select_quiz():
     return Quiz(questions)
 
 def take_quiz(quiz):
-    print(quiz)
-    input("stop")
+    clear()
+    quizzing = 1
+    while (quizzing != -1):
+        if quiz.question_is_marked(db):
+            print("*This question has been marked*\n")
+        quiz.display()
+        print ("\n(Enter '{0}' to exit the quiz, or '{1}' to mark/unmark question)\n".format(
+        EXIT_QUIZ, MARK_QUESTION))
+        user_input = input("Your Answer: ")
+        user_input.replace(" ", "")
+        if user_input == EXIT_QUIZ:
+            break
+        if user_input == MARK_QUESTION:
+            quiz.mark_question(db)
+            clear()
+            continue
+        user_input = user_input.lower()
+        quiz_answer = quiz.choice_is_correct(user_input)
+        if  quiz_answer == None:
+            print("You are correct!")
+        else:
+            print("Incorrect, the correct answer was: ", quiz_answer)
 
+        quizzing = quiz.next_question()
+        input_wait()
+
+    clear()
+    print("Your score was: {0:.2f}%".format(quiz.get_score()))
+    input_wait()
 
 def main_menu():
     choice = 0
@@ -121,6 +154,7 @@ def main_menu():
 
         elif choice == 3:
             clear()
+    clear()
 
 
 def main(args):
@@ -137,7 +171,7 @@ def main(args):
     #     print("Searching Piazza for new quizzes...")
     #     pq.find_all_quiz_questions()
     #
-    # input("Press  enter to continue...")
+    # input_wait()
 
     main_menu()
 
