@@ -29,8 +29,8 @@ class DBManager(object):
     def store_credentials(self, username, password, course_id):
         try:
             last_id = 0
-            self.cur.execute('''INSERT OR REPLACE INTO FIRST_USE(ID, USER, PWD, COURSEID)
-                    VALUES(?,?,?,?)''', (last_id, username, password, course_id))
+            self.cur.execute("""INSERT OR REPLACE INTO FIRST_USE(ID, USER, PWD, COURSEID)
+                    VALUES(?,?,?,?)""", (last_id, username, password, course_id))
             self.db.commit()
         except Exception as e:
             self.log('Failed to store credentials for {0}'.format(username), e)
@@ -42,7 +42,7 @@ class DBManager(object):
     """
     def store_quiz(self, nr, date, title):
         try:
-            cursor = self.cur.execute("SELECT ID FROM QUIZZES")
+            cursor = self.cur.execute("""SELECT ID FROM QUIZZES""")
             for row in cursor:
                 if row[0] == nr:
                     return 0
@@ -51,8 +51,8 @@ class DBManager(object):
             return -1;
 
         try:
-            self.cur.execute('''INSERT INTO QUIZZES(ID, NAME, CREATED)
-                    VALUES(?,?,?)''', (nr, title, date))
+            self.cur.execute("""INSERT INTO QUIZZES(ID, NAME, CREATED)
+                    VALUES(?,?,?)""", (nr, title, date))
             self.db.commit()
         except Exception as e:
             self.log('Failed to insert quiz {0}'.format(title), e)
@@ -64,23 +64,39 @@ class DBManager(object):
     """
     def store_questions(self, questions):
         try:
-            self.cur.executemany('''INSERT INTO QUESTIONS(ANSWER, QUESTION, CHOICES, NR, MARKED)
-                    VALUES(?,?,?,?,?)''', questions)
+            self.cur.executemany("""INSERT INTO QUESTIONS(ANSWER, QUESTION, CHOICES, NR, MARKED)
+                    VALUES(?,?,?,?,?)""", questions)
             self.db.commit()
         except Exception as e:
             self.log('Failed to insert questions', e)
             return -1;
 
-    """ marks a specific queston by setting column MARKED to 1
+    """ marks a specific queston by setting column MARKED to 1.
+    if the question is already marked, than it is unmarked
 
     Returns -1 on error
     """
     def mark_question(self, question):
         try:
-            self.cur.execute('''UPDATE QUESTIONS SET MARKED=1 WHERE QUESTION=question''')
+            if (self.is_marked(question)):
+                self.cur.execute("""UPDATE QUESTIONS SET MARKED=0 WHERE QUESTION='{0}'""".format(question))
+            else:
+                self.cur.execute("""UPDATE QUESTIONS SET MARKED=1 WHERE QUESTION='{0}'""".format(question))
             self.db.commit()
         except Exception as e:
             self.log('Failed to mark question {0}'.format(question), e)
+            return -1;
+
+    """ Checks if a question has been marked
+
+    Returns -1 on error, True if marked, false if not
+    """
+    def is_marked(self, question):
+        try:
+            marked = self.cur.execute("""SELECT MARKED FROM QUESTIONS WHERE QUESTION='{0}'""".format(question))
+            return marked.fetchone()[0] == 1
+        except Exception as e:
+            self.log('Failed to check if a question is marked {0}'.format(question), e)
             return -1;
 
     """ Gets user credentials from database to login
@@ -89,7 +105,7 @@ class DBManager(object):
     """
     def get_credentials(self):
         try:
-            cursor = self.cur.execute("SELECT * FROM FIRST_USE LIMIT 1")
+            cursor = self.cur.execute("""SELECT * FROM FIRST_USE LIMIT 1""")
             return cursor.fetchone()
         except Exception as e:
             self.log('Failed to get user credentials', e)
@@ -101,7 +117,7 @@ class DBManager(object):
     """
     def get_quizzes(self):
         try:
-            cursor = self.cur.execute("SELECT * FROM QUIZZES")
+            cursor = self.cur.execute("""SELECT * FROM QUIZZES""")
             return cursor.fetchall()
         except Exception as e:
             self.log('Failed to get quizzes', e)
@@ -117,16 +133,16 @@ class DBManager(object):
         try:
             cursor = None
             if (quiz_id == "all"):
-                cursor = self.cur.execute("SELECT * FROM QUESTIONS")
-            elif (quiz_id == "all"):
-                cursor = self.cur.execute("SELECT * FROM QUESTIONS WHERE MARKED=1")
+                cursor = self.cur.execute("""SELECT * FROM QUESTIONS""")
+            elif (quiz_id == "m"):
+                cursor = self.cur.execute("""SELECT * FROM QUESTIONS WHERE MARKED=1""")
             else:
-                cursor = self.cur.execute("SELECT * FROM QUESTIONS WHERE NR={0}".format(quiz_id))
+                cursor = self.cur.execute("""SELECT * FROM QUESTIONS WHERE NR={0}""".format(quiz_id))
             return cursor.fetchall()
         except Exception as e:
             self.log('Failed to get questions', e)
             return -1;
 
     def is_first_time(self):
-        cursor = self.cur.execute("SELECT USER from FIRST_USE")
+        cursor = self.cur.execute("""SELECT USER from FIRST_USE""")
         return cursor.fetchone() is None
