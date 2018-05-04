@@ -93,7 +93,7 @@ def select_quiz():
             input_wait()
             return None
     else:
-        questions = db.get_questions(quizzes[choice][0])
+        questions = db.get_questions(quizzes[choice - 1][0])
 
     check_db_return(questions)
 
