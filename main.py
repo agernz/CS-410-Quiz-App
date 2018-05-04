@@ -83,10 +83,13 @@ def select_quiz():
         return None
 
     questions = None
+    quiz_name = "None"
     if choice == i + 2:
         questions = db.get_questions("all")
+        quiz_name = ALL_NAME
     elif choice == i + 3:
         questions = db.get_questions("m")
+        quiz_name = MARKED_NAME
         if len(questions) == 0:
             clear()
             print("No questions have been marked")
@@ -94,10 +97,11 @@ def select_quiz():
             return None
     else:
         questions = db.get_questions(quizzes[choice - 1][0])
+        quiz_name = quizzes[choice - 1][1]
 
     check_db_return(questions)
 
-    return Quiz(questions)
+    return Quiz(questions, quiz_name)
 
 def take_quiz(quiz):
     clear()
@@ -130,6 +134,63 @@ def take_quiz(quiz):
     print("Your score was: {0:.2f}%".format(quiz.get_score()))
     input_wait()
 
+""" Creates a directory /search/<quiz name>/ which contains
+a dat file and line.toml so that the quiz can be searched using
+MeTA
+
+If the quiz name is ALL_NAME or MARKED_NAME, then the directory
+is overwritten since the data for these quizzes can change
+
+returns True on success, or False if an error occurs
+"""
+def create_dataset_if_not_exist(quiz):
+    directory = "{0}/{1}".format(SEARCH_DIR, quiz.name)
+    if os.path.isdir(directory) and (quiz.name != ALL_NAME or quiz_name != MARKED_NAME):
+        return True
+
+    try:
+        os.makedirs(directory)
+    except Exception as e:
+        print(e)
+        return False
+
+    try:
+        data_file = open("/".join((directory, DATA_FILE)), 'w')
+        for question in quiz.questions:
+            data_file.write("{0}\n".format(question[1]))
+        data_file.close()
+
+        line_file = open("/".join((directory, LINE_FILE)), 'w')
+        line_file.write("type = 'line-corpus'")
+        line_file.close()
+    except Exception as e:
+        print(e)
+        return False
+    return True
+
+""" Updates the config.toml dataset field with the given
+quiz name
+
+returns True on success, false if fials to open file
+"""
+def setup_config(quiz_name):
+    try:
+        conf_file = open("config.toml", 'r')
+        lines = conf_file.readlines()
+        conf_file.close()
+
+        for i in range(len(lines)):
+            if lines[i].startswith("dataset"):
+                lines[i] = "dataset = '{0}'\n".format(quiz_name)
+
+        conf_file = open("config.toml", 'w')
+        with conf_file:
+            conf_file.writelines(lines)
+    except Exception as e:
+        print(e)
+        return False
+    return True
+
 def main_menu():
     choice = 0
     while (choice != 4):
@@ -151,7 +212,21 @@ def main_menu():
                 take_quiz(quiz)
         elif choice == 2:
             clear()
-
+            quiz = select_quiz()
+            if quiz:
+                clear()
+                if not (create_dataset_if_not_exist(quiz)):
+                    print("Failed to create search index")
+                    input_wait()
+                    continue
+                if not (setup_config(quiz.name)):
+                    print("Could not open config.toml")
+                    input_wait()
+                    continue
+                print("Search for specific questions in %s\n" % quiz.name)
+                query = input("Enter query: ")
+                #quiz = select_questions_from_quiz(quiz, query)
+                #take_quiz(quiz.name)
         elif choice == 3:
             clear()
     clear()
