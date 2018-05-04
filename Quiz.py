@@ -1,6 +1,7 @@
 class Quiz(object):
 
-    def __init__(self, questions):
+    def __init__(self, questions, quiz_name):
+        self.name = quiz_name
         self.questions = questions
         self.quiz_length = len(questions)
         self.index = 0
