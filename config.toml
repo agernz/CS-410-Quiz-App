@@ -1,0 +1,11 @@
+prefix = "./search/"
+stop-words = "stopwords.txt"
+
+dataset = 'week11 submitted quiz questions'
+corpus = "line.toml"
+index = "idx"
+
+[[analyzers]]
+method = "ngram-word"
+ngram = 1
+filter = "default-unigram-chain"
