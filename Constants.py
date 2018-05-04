@@ -1,3 +1,8 @@
 DB_NAME = "CS410.db"
 EXIT_QUIZ = "QUIT"
 MARK_QUESTION = "M"
+ALL_NAME = "all quizzes"
+MARKED_NAME = "marked quiz questions"
+SEARCH_DIR = "search"
+DATA_FILE = "data.dat"
+LINE_FILE = "line.toml"
