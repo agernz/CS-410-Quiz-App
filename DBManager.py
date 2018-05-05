@@ -143,6 +143,18 @@ class DBManager(object):
             self.log('Failed to get questions', e)
             return -1;
 
+    """ Selects a Question from database that matches the inputted question
+
+    Returns -1 on error
+    """
+    def get_questions_from_question(self, question):
+        try:
+            cursor = self.cur.execute("""SELECT * FROM QUESTIONS WHERE QUESTION='{0}'""".format(question))
+            return cursor.fetchone()
+        except Exception as e:
+            self.log('Failed to get questions from question {0}'.format(question), e)
+            return -1;
+
     def is_first_time(self):
         cursor = self.cur.execute("""SELECT USER from FIRST_USE""")
         return cursor.fetchone() is None
