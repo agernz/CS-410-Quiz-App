@@ -2,6 +2,7 @@ from piazza_api import Piazza
 from DBManager import *
 from Constants import *
 import sqlite3 as sql
+import string
 
 class PiazzaQuestions(object):
     """Wrapper for Piazza API. Use to login user and retreive the most
@@ -23,6 +24,14 @@ class PiazzaQuestions(object):
             self.class_id = self.p.network(creds[3])
         except Exception as e:
             return -1
+
+    """ Needed because of different character encoding that
+    can be used on piazza
+
+    Returns the same string with non printable characters removed
+    """
+    def sanitize_input(self, string_value):
+        return "".join(s for s in string_value if s in string.printable)
 
     """ Parse a question into answer, question, and answer choicesself.
     question must be of form #answer# question[?.] (choice1) text (choice_n) text
@@ -101,8 +110,10 @@ class PiazzaQuestions(object):
                         content = content[content.find(">") + 1:]
                         question_values = self.parse_question(question)
                         if (question_values != -1):
-                            all_questions.append((question_values[0],
-                            question_values[1], question_values[2],
+                            all_questions.append(
+                            (self.sanitize_input(question_values[0]),
+                            self.sanitize_input(question_values[1]),
+                            self.sanitize_input(question_values[2]),
                             post_nr, 0))
                     self.dbManager.store_questions(all_questions)
 
