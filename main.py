@@ -3,6 +3,7 @@ from PiazzaQuestions import *
 from Constants import *
 from Quiz import *
 import os, sys
+import metapy
 
 db = DBManager(DB_NAME)
 pq = PiazzaQuestions()
@@ -74,7 +75,7 @@ def select_quiz():
 
         choice = input("Select an option (1-{0}): ".format(i + 4))
         # check validity of input
-        choice.replace(" ", "")
+        choice.strip()
         choice = choice_is_valid(choice, i + 4)
         if (choice):
             break
@@ -83,7 +84,7 @@ def select_quiz():
         return None
 
     questions = None
-    quiz_name = "None"
+    quiz_name = None
     if choice == i + 2:
         questions = db.get_questions("all")
         quiz_name = ALL_NAME
@@ -113,7 +114,7 @@ def take_quiz(quiz):
         print ("\n(Enter '{0}' to exit the quiz, or '{1}' to mark/unmark question)\n".format(
         EXIT_QUIZ, MARK_QUESTION))
         user_input = input("Your Answer: ")
-        user_input.replace(" ", "")
+        user_input.strip()
         if user_input == EXIT_QUIZ:
             break
         if user_input == MARK_QUESTION:
@@ -155,13 +156,16 @@ def create_dataset_if_not_exist(quiz):
         return False
 
     try:
-        data_file = open("/".join((directory, DATA_FILE)), 'w')
+        data_file = open("{0}/{1}.dat".format(directory, quiz.name), 'w')
+        meta_file = open("{0}/{1}.dat".format(directory, "metadata"), 'w')
         for question in quiz.questions:
             data_file.write("{0}\n".format(question[1]))
+            meta_file.write("{0}\n".format(question[1]))
         data_file.close()
+        meta_file.close()
 
         line_file = open("/".join((directory, LINE_FILE)), 'w')
-        line_file.write("type = 'line-corpus'")
+        line_file.write("type = 'line-corpus'\nmetadata = [{name = 'content', type = 'string'}]")
         line_file.close()
     except Exception as e:
         print(e)
@@ -180,6 +184,8 @@ def setup_config(quiz_name):
         conf_file.close()
 
         for i in range(len(lines)):
+            if lines[i].startswith("index"):
+                lines[i] = "index = 'idx-{0}'\n".format(quiz_name)
             if lines[i].startswith("dataset"):
                 lines[i] = "dataset = '{0}'\n".format(quiz_name)
 
@@ -191,6 +197,39 @@ def setup_config(quiz_name):
         return False
     return True
 
+""" Creates a Quiz object that contains questions from
+user's query. Ranking is done using metapy. The questions
+found are presented and the user has the option to take the quiz
+or not.
+
+Returns Quiz object
+"""
+def select_questions_from_quiz(query, num_questions):
+    # check_db_return(quizzes)
+
+    idx = metapy.index.make_inverted_index("config.toml")
+    ranker = metapy.index.OkapiBM25()
+    search = metapy.index.Document()
+    search.content(query.strip())
+
+    top_questions = ranker.score(idx, search, num_results=num_questions)
+    quiz_questions = []
+    for num, (d_id, _) in enumerate(top_questions):
+        content = idx.metadata(d_id).get('content')
+        question = db.get_questions_from_question(content)
+        if question != -1:
+            print(content)
+            quiz_questions.append(question)
+
+    if (input("\nTake Quiz? (y/n): ").strip().lower() != 'y'):
+        return None
+
+    if len(quiz_questions) == 0:
+        print("No questions found relating to query")
+        input_wait()
+        return None
+    return Quiz(quiz_questions, None)
+
 def main_menu():
     choice = 0
     while (choice != 4):
@@ -200,7 +239,7 @@ def main_menu():
         "1) Select Quiz\n2) Search Questions\n3) Generate Sub-quizzes\n4) Exit")
         choice = input("Select an option (1-4): ")
         # check validity of input
-        choice.replace(" ", "")
+        choice.strip()
         choice = choice_is_valid(choice, 4)
         if (not choice):
             continue
@@ -225,8 +264,9 @@ def main_menu():
                     continue
                 print("Search for specific questions in %s\n" % quiz.name)
                 query = input("Enter query: ")
-                #quiz = select_questions_from_quiz(quiz, query)
-                #take_quiz(quiz.name)
+                quiz = select_questions_from_quiz(query, len(quiz.questions))
+                if quiz:
+                    take_quiz(quiz)
         elif choice == 3:
             clear()
     clear()
