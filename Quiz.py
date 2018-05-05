@@ -31,4 +31,4 @@ class Quiz(object):
         return 1
 
     def get_score(self):
-        return self.score / self.quiz_length
+        return (self.score / self.quiz_length) * 100
