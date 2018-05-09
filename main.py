@@ -145,22 +145,25 @@ is overwritten since the data for these quizzes can change
 returns True on success, or False if an error occurs
 """
 def create_dataset_if_not_exist(quiz):
-    directory = "{0}/{1}".format(SEARCH_DIR, quiz.name)
-    if os.path.isdir(directory) and (quiz.name != ALL_NAME or quiz_name != MARKED_NAME):
+    directory = "{0}/{1}".format(SEARCH_DIR, quiz.name.replace(" ", "_"))
+    if os.path.isdir(directory) and (quiz.name != ALL_NAME and quiz.name != MARKED_NAME):
         return True
 
     try:
-        os.makedirs(directory)
+        if not os.path.isdir(directory):
+            os.makedirs(directory)
     except Exception as e:
         print(e)
         return False
 
     try:
-        data_file = open("{0}/{1}.dat".format(directory, quiz.name), 'w')
+        data_file = open("{0}/{1}.dat".format(directory, quiz.name.replace(" ", "_")), 'w')
         meta_file = open("{0}/{1}.dat".format(directory, "metadata"), 'w')
         for question in quiz.questions:
-            data_file.write("{0}\n".format(question[1]))
-            meta_file.write("{0}\n".format(question[1]))
+            # questions that are too short are likely not paresed correctly
+            if len(question[1]) > 10:
+                data_file.write("{0}\n".format(question[1]))
+                meta_file.write("{0}\n".format(question[1]))
         data_file.close()
         meta_file.close()
 
@@ -185,9 +188,9 @@ def setup_config(quiz_name):
 
         for i in range(len(lines)):
             if lines[i].startswith("index"):
-                lines[i] = "index = 'idx-{0}'\n".format(quiz_name)
+                lines[i] = "index = 'idx-{0}'\n".format(quiz_name.replace(" ", "_"))
             if lines[i].startswith("dataset"):
-                lines[i] = "dataset = '{0}'\n".format(quiz_name)
+                lines[i] = "dataset = '{0}'\n".format(quiz_name.replace(" ", "_"))
 
         conf_file = open("config.toml", 'w')
         with conf_file:
@@ -205,8 +208,6 @@ or not.
 Returns Quiz object
 """
 def select_questions_from_quiz(query, num_questions):
-    # check_db_return(quizzes)
-
     idx = metapy.index.make_inverted_index("config.toml")
     ranker = metapy.index.OkapiBM25()
     search = metapy.index.Document()
@@ -221,14 +222,73 @@ def select_questions_from_quiz(query, num_questions):
             print(content)
             quiz_questions.append(question)
 
-    if (input("\nTake Quiz? (y/n): ").strip().lower() != 'y'):
-        return None
-
     if len(quiz_questions) == 0:
         print("No questions found relating to query")
         input_wait()
         return None
+
+    if (input("\nTake Quiz? (y/n): ").strip().lower() != 'y'):
+        return None
+
     return Quiz(quiz_questions, None)
+
+""" Perform topic modeling using quiz data from
+user selected quiz. Lists all 10 topics generated and
+ask user to select a topic
+
+Returns user selected topic
+"""
+def select_generated_topics():
+    output = "out"
+    _num_topics = 10
+    _k = 3
+
+    fidx = metapy.index.make_forward_index("config.toml")
+    dset = metapy.learn.Dataset(fidx)
+    lda_inf = metapy.topics.LDAGibbs(dset, num_topics=_num_topics, alpha=1.0, beta=0.01)
+    lda_inf.run(num_iters=500)
+    lda_inf.save(output)
+    model = metapy.topics.TopicModel(output)
+
+    while (1):
+        topics = []
+        for topic_id in range(_num_topics):
+            query = ""
+            print(topic_id + 1, ")", end=' ')
+            for pr in model.top_k(tid=topic_id, k=_k):
+                term = fidx.term_text(pr[0])
+                print(term, end=' ')
+                query += term + " "
+            topics.append(query)
+            print()
+
+        choice = input("Select an option (1-{0}): ".format(_num_topics))
+        # check validity of input
+        choice.strip()
+        choice = choice_is_valid(choice, _num_topics)
+        if (choice):
+            break
+
+    return topics[choice - 1]
+
+""" Performs setup needed after a user selcts a quiz
+to either search or perform topic analysis on. Creates
+dataset if it does not exist and sets config file to that
+dataset
+
+Returns True on success, false if there was an error
+"""
+def setup_metapy_data(quiz):
+    if not (create_dataset_if_not_exist(quiz)):
+        print("Failed to create search index")
+        input_wait()
+        return False
+    if not (setup_config(quiz.name)):
+        print("Could not open config.toml")
+        input_wait()
+        return False
+    return True
+
 
 def main_menu():
     choice = 0
@@ -254,13 +314,7 @@ def main_menu():
             quiz = select_quiz()
             if quiz:
                 clear()
-                if not (create_dataset_if_not_exist(quiz)):
-                    print("Failed to create search index")
-                    input_wait()
-                    continue
-                if not (setup_config(quiz.name)):
-                    print("Could not open config.toml")
-                    input_wait()
+                if not setup_metapy_data(quiz):
                     continue
                 print("Search for specific questions in %s\n" % quiz.name)
                 query = input("Enter query: ")
@@ -269,6 +323,15 @@ def main_menu():
                     take_quiz(quiz)
         elif choice == 3:
             clear()
+            quiz = select_quiz()
+            if quiz:
+                clear()
+                if not setup_metapy_data(quiz):
+                    continue
+                query = select_generated_topics()
+                quiz = select_questions_from_quiz(query, len(quiz.questions))
+                if quiz:
+                    take_quiz(quiz)
     clear()
 
 
