@@ -1,9 +1,8 @@
 prefix = "./search"
-stop-words = "stopwords.txt"
-
-dataset = 'week9 submitted quiz questions'
+dataset = 'week12_submitted_quiz_questions'
 corpus = "line.toml"
-index = 'idx-week9 submitted quiz questions'
+index = 'idx-week12_submitted_quiz_questions'
+stop-words = "stopwords.txt"
 
 [[analyzers]]
 method = "ngram-word"
