@@ -27,7 +27,7 @@ def choice_is_valid(choice, max):
         return 0
 
     choice = int(choice)
-    if (choice > max):
+    if (choice > max or choice <= 0):
         print("Invalid choice selected, please enter a number 1-{0}".format(max))
         input_wait()
         return 0
@@ -239,6 +239,8 @@ ask user to select a topic
 Returns user selected topic
 """
 def select_generated_topics():
+    print("Generating Quiz Topics...")
+
     output = "out"
     _num_topics = 10
     _k = 3
@@ -250,11 +252,13 @@ def select_generated_topics():
     lda_inf.save(output)
     model = metapy.topics.TopicModel(output)
 
+    clear()
+
     while (1):
         topics = []
         for topic_id in range(_num_topics):
             query = ""
-            print(topic_id + 1, ")", end=' ')
+            print("{0})".format(topic_id + 1), end=' ')
             for pr in model.top_k(tid=topic_id, k=_k):
                 term = fidx.term_text(pr[0])
                 print(term, end=' ')
@@ -329,6 +333,7 @@ def main_menu():
                 if not setup_metapy_data(quiz):
                     continue
                 query = select_generated_topics()
+                clear()
                 quiz = select_questions_from_quiz(query, len(quiz.questions))
                 if quiz:
                     take_quiz(quiz)
