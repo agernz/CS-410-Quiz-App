@@ -6,11 +6,20 @@ class Quiz(object):
         self.quiz_length = len(questions)
         self.index = 0
         self.score = 0
+        self.num_dropped = 0
 
 
     def display(self):
-        print(self.questions[self.index][1])
-        print(self.questions[self.index][2])
+        # questions that are too short are likely not paresed correctly
+        if len(self.questions[self.index][1]) > 10:
+            print(self.questions[self.index][1])
+            print(self.questions[self.index][2])
+        else:
+            # drop question so it does not affect score
+            self.num_dropped += 1
+            self.next_question()
+            self.display()
+
 
     def choice_is_correct(self, choice):
         if (choice == self.questions[self.index][0].replace(" ", "").lower()):
@@ -31,4 +40,4 @@ class Quiz(object):
         return 1
 
     def get_score(self):
-        return (self.score / self.quiz_length) * 100
+        return (self.score / (self.quiz_length - self.num_dropped)) * 100
