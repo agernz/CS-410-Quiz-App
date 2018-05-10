@@ -85,6 +85,7 @@ def select_quiz():
 
     questions = None
     quiz_name = None
+    quiz_nr = None
     if choice == i + 2:
         questions = db.get_questions("all")
         quiz_name = ALL_NAME
@@ -99,10 +100,11 @@ def select_quiz():
     else:
         questions = db.get_questions(quizzes[choice - 1][0])
         quiz_name = quizzes[choice - 1][1]
+        quiz_nr = quizzes[choice - 1][0]
 
     check_db_return(questions)
 
-    return Quiz(questions, quiz_name)
+    return Quiz(questions, quiz_name, quiz_nr)
 
 def take_quiz(quiz):
     clear()
@@ -230,7 +232,7 @@ def select_questions_from_quiz(query, num_questions):
     if (input("\nTake Quiz? (y/n): ").strip().lower() != 'y'):
         return None
 
-    return Quiz(quiz_questions, None)
+    return Quiz(quiz_questions, None, None)
 
 """ Perform topic modeling using quiz data from
 user selected quiz. Lists all 10 topics generated and
