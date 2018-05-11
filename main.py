@@ -9,18 +9,35 @@ db = DBManager(DB_NAME)
 pq = PiazzaQuestions()
 
 def clear():
+    """Clears the terminal using windows or linux command"""
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def input_wait():
+    """Wait for user to press return before proceeding"""
     input("\nPress enter to continue...")
     clear()
 
 def check_db_return(result):
+    """Use to close program if the database returns an error
+
+    Keyword arguments:
+        result -- return value from DBManager function
+    """
     if (result == -1):
         print("Database error, check errors.txt for problem.")
         exit(1)
 
 def choice_is_valid(choice, max):
+    """Checks that choice is a valid option by ensuring
+    it is a digit and that it lies between 0 and max
+
+    Keyword arguments:
+        choice -- user input
+        max -- max value choice can be
+
+    Returns:
+        returns the choice if it is valid, 0 if choice was invalid
+    """
     if (not choice.isdigit()):
         print("Invalid choice selected, please enter a number 1-{0}".format(max))
         input_wait()
@@ -34,6 +51,12 @@ def choice_is_valid(choice, max):
     return choice
 
 def register_user():
+    """Attmpts to register a user by asking them for their piazza credentials
+    and course id. If user credentials or course id do not work, the user
+    will be prompted to enter their credentials or course id again.
+    After a succesful login, the credentials will be stored in the
+    database and quizzes will be pulled from piazza
+    """
     result = 0
     print("(WARNING: credentials are stored unencrypted on disk,"
     + "please ensure your piazza password is not used for any other"
@@ -58,6 +81,15 @@ def register_user():
                 result = 1
 
 def select_quiz():
+    """Outputs a numbered list of all the quiz options the user can pick
+    from including a category for all quizzes, marked questions, and an
+    optiont to return to the main main_menu.
+
+    Returns:
+        A Quiz object containing all the quiz questions or None
+        if the user does not select a quiz or the user selcts
+        marked questions and no question have been marked
+    """
     quizzes = db.get_quizzes()
     check_db_return(quizzes)
 
@@ -85,13 +117,14 @@ def select_quiz():
 
     questions = None
     quiz_name = None
-    quiz_nr = None
+    quiz_id = None
     if choice == i + 2:
         questions = db.get_questions("all")
         quiz_name = ALL_NAME
     elif choice == i + 3:
         questions = db.get_questions("m")
         quiz_name = MARKED_NAME
+        quiz_id = MARK_QUESTION
         if len(questions) == 0:
             clear()
             print("No questions have been marked")
@@ -100,13 +133,22 @@ def select_quiz():
     else:
         questions = db.get_questions(quizzes[choice - 1][0])
         quiz_name = quizzes[choice - 1][1]
-        quiz_nr = quizzes[choice - 1][0]
+        quiz_id = quizzes[choice - 1][0]
 
     check_db_return(questions)
 
-    return Quiz(questions, quiz_name, quiz_nr)
+    return Quiz(questions, quiz_name, quiz_id)
 
 def take_quiz(quiz):
+    """Quizzes user on all questions in quiz. During the quiz, the user can
+    mark a question or quit the quiz. When the user enters their answer,
+    it will be reported whether their answer was correct or incorrect. If
+    incorrect, the correct answer will be displayed. At the end of the quiz,
+    the user's score is reported
+
+    Keyword arguments:
+        quiz -- a quiz object
+    """
     clear()
     quizzing = 1
     while (quizzing != -1):
@@ -137,16 +179,19 @@ def take_quiz(quiz):
     print("Your score was: {0:.2f}%".format(quiz.get_score()))
     input_wait()
 
-""" Creates a directory /search/<quiz name>/ which contains
-a dat file and line.toml so that the quiz can be searched using
-MeTA
-
-If the quiz name is ALL_NAME or MARKED_NAME, then the directory
-is overwritten since the data for these quizzes can change
-
-returns True on success, or False if an error occurs
-"""
 def create_dataset_if_not_exist(quiz):
+    """Creates a directory /search/<quiz name>/ which contains
+    a dat file and line.toml so that the quiz can be searched using
+    MeTA.
+    If the quiz name is ALL_NAME or MARKED_NAME, then the directory
+    is overwritten since the data for these quizzes can change
+
+    Keyword arguments:
+        quiz -- a Quiz object
+
+    Returns:
+        True on success, or False if an error occurs
+    """
     directory = "{0}/{1}".format(SEARCH_DIR, quiz.name.replace(" ", "_"))
     if os.path.isdir(directory) and (quiz.name != ALL_NAME and quiz.name != MARKED_NAME):
         return True
@@ -177,12 +222,16 @@ def create_dataset_if_not_exist(quiz):
         return False
     return True
 
-""" Updates the config.toml dataset field with the given
-quiz name
-
-returns True on success, false if fials to open file
-"""
 def setup_config(quiz_name):
+    """Updates the config.toml index and dataset field with the formatted
+    quiz_name. This directs metapy to use the correct files
+
+    Keyword arguments:
+        quiz_name -- the name of the quiz
+
+    Returns:
+        True on success, false if fials to open file
+    """
     try:
         conf_file = open("config.toml", 'r')
         lines = conf_file.readlines()
@@ -202,24 +251,48 @@ def setup_config(quiz_name):
         return False
     return True
 
-""" Creates a Quiz object that contains questions from
-user's query. Ranking is done using metapy. The questions
-found are presented and the user has the option to take the quiz
-or not.
+def setup_metapy_data(quiz):
+    """Performs setup needed after a user selcts a quiz
+    to either search or perform topic analysis on. Creates
+    dataset if it does not exist and sets config file to that
+    dataset
 
-Returns Quiz object
-"""
-def select_questions_from_quiz(query, num_questions):
+    Returns:
+        True on success, false if there was an error
+    """
+    if not (create_dataset_if_not_exist(quiz)):
+        print("Failed to create search index")
+        input_wait()
+        return False
+    if not (setup_config(quiz.name)):
+        print("Could not open config.toml")
+        input_wait()
+        return False
+    return True
+
+def select_questions_from_quiz(query, quiz):
+    """Creates a Quiz object that contains questions from
+    user's query. Ranking is done using metapy. The questions
+    found are presented and the user has the option to take the quiz
+    or not.
+
+    Keyword arguments:
+        query -- user input, search terms
+        quiz -- a Quiz object to query on
+
+    Returns:
+        A Quiz object containing the queried questions
+    """
     idx = metapy.index.make_inverted_index("config.toml")
     ranker = metapy.index.OkapiBM25()
     search = metapy.index.Document()
     search.content(query.strip())
 
-    top_questions = ranker.score(idx, search, num_results=num_questions)
+    top_questions = ranker.score(idx, search, num_results=len(quiz.questions))
     quiz_questions = []
     for num, (d_id, _) in enumerate(top_questions):
         content = idx.metadata(d_id).get('content')
-        question = db.get_questions_from_question(content)
+        question = db.get_questions_from_question(content, quiz.id)
         if question != -1:
             print(content)
             quiz_questions.append(question)
@@ -234,13 +307,16 @@ def select_questions_from_quiz(query, num_questions):
 
     return Quiz(quiz_questions, None, None)
 
-""" Perform topic modeling using quiz data from
-user selected quiz. Lists all 10 topics generated and
-ask user to select a topic
-
-Returns user selected topic
-"""
 def select_generated_topics():
+    """Perform topic modeling using quiz data from
+    user selected quiz. Lists 10 generated topics and
+    ask user to select a topic. The return value of this function
+    should be passed to select_questions_from_quiz to generate quiz questions
+    pertaining to the topic
+
+    Returns:
+        The user selected topic
+    """
     print("Generating Quiz Topics...")
 
     output = "out"
@@ -277,30 +353,27 @@ def select_generated_topics():
 
     return topics[choice - 1]
 
-""" Performs setup needed after a user selcts a quiz
-to either search or perform topic analysis on. Creates
-dataset if it does not exist and sets config file to that
-dataset
-
-Returns True on success, false if there was an error
-"""
-def setup_metapy_data(quiz):
-    if not (create_dataset_if_not_exist(quiz)):
-        print("Failed to create search index")
-        input_wait()
-        return False
-    if not (setup_config(quiz.name)):
-        print("Could not open config.toml")
-        input_wait()
-        return False
-    return True
-
-
 def main_menu():
+    """Displays a menu for the user to interact with:
+    CS 410 Quiz App
+    ------------
+    1) Select Quiz
+    2) Search Questions
+    3) Generate Sub-quizzes
+    4) Exit
+    The user must select 1 of the 4 options, if their input is invalid they
+    will be prompted again
+    Select Quiz - user picks a quiz to take
+    Search Questions - user selects a quiz then enters a query for what
+        questions to be quizzed on
+    Generate Sub-quizzes - user selects a quiz to generate topics from.
+        The top 10 topics are found and the user picks one. The user then given
+        questions related to the topic
+    """
     choice = 0
     while (choice != 4):
         clear()
-        print( "QuizME\n" +
+        print( "CS 410 Quiz App\n" +
         "------------\n" +
         "1) Select Quiz\n2) Search Questions\n3) Generate Sub-quizzes\n4) Exit")
         choice = input("Select an option (1-4): ")
@@ -324,7 +397,7 @@ def main_menu():
                     continue
                 print("Search for specific questions in %s\n" % quiz.name)
                 query = input("Enter query: ")
-                quiz = select_questions_from_quiz(query, len(quiz.questions))
+                quiz = select_questions_from_quiz(query, quiz)
                 if quiz:
                     take_quiz(quiz)
         elif choice == 3:
@@ -336,29 +409,39 @@ def main_menu():
                     continue
                 query = select_generated_topics()
                 clear()
-                quiz = select_questions_from_quiz(query, len(quiz.questions))
+                quiz = select_questions_from_quiz(query, quiz)
                 if quiz:
                     take_quiz(quiz)
     clear()
 
 
-def main(args):
-    # if (db.is_first_time()):
-    #     register_user()
-    #
-    # else:
-    #     print("logging in...")
-    #     if (pq.login_user() == -1):
-    #         print("login failed")
-    #         sys.exit(1)
-    #     print("login succesful!")
-    #
-    #     print("Searching Piazza for new quizzes...")
-    #     pq.find_all_quiz_questions()
-    #
-    # input_wait()
+def main():
+    """If it is the user's first time, the database is set up and the user
+    is asked to register. If they have already registered, they will be
+    automatically logged in. They then have the option to search piazza for
+    new quizzes. The user can still use the program without logging in, but
+    they must already be registered. No login means they cannot get new
+    quizzes from piazza
+    """
+    if (db.is_first_time()):
+        db.create_tables()
+        register_user()
 
+    else:
+        print("logging in...")
+        if (pq.login_user() != -1):
+            print("login succesful!")
+
+            if (input("\nSeach Piazza for new quizzes? (y/n): ").strip().lower() == 'y'):
+                clear()
+                print("Searching Piazza for new quizzes...")
+                pq.find_all_quiz_questions()
+                input_wait()
+        else:
+            if (input("\nlogin failed, continue without logging in? (y/n): ").strip().lower() != 'y'):
+                register_user()
+                input_wait()
     main_menu()
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main()
