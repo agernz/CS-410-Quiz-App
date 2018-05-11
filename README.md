@@ -24,30 +24,30 @@ python main.py
 ## Description of Files
 *See function docstrings in py files for detailed descriptions*
 
-###Constants.py
+### Constants.py
 Contains constants used in the program.
 
-###DBManager.py
+### DBManager.py
 Handles all database interractions for the program using sqlite. 
 The databse is used to store/retreive user's piazza credentials, quizzes, and all quiz questions. 
   
-###PiazzaQuestions.py
+### PiazzaQuestions.py
 Wrapper for the unofficial piazza API. Used to login the user, check for new quizzes on piazza, 
 and prepare the piazza post to be stored in the database.  
   
-###Quiz.py
+### Quiz.py
 Represents what a quiz is. Handles the actual quizzing process 
 and can mark questions so the user can quiz themselves on specific questions later.
   
-###main.py
+### main.py
 This is the 'executable' of the application. 
 Creates the interactive environment in the terminal for the user to login and navigate through menu options. 
 Provides the user with the ability to take quizzes, search for certain quiz terms, and perform topic mining. 
 
-###config.toml
+### config.toml
 Used by metapy for searching and topic mining.
   
-###stopwords.txt
+### stopwords.txt
 Contains a list of words that metapy will ignore during searching and topic mining.
   
 ## Important
