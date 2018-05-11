@@ -13,11 +13,12 @@ class PiazzaQuestions(object):
         self.class_id = None
         self.dbManager = DBManager(DB_NAME)
 
-    """ Log in user with stored credentials
-
-    Return -1 if fails to login
-    """
     def login_user(self):
+        """Log in user with credentials stored in database
+
+        Returns:
+            -1 if login fails
+        """
         creds = self.dbManager.get_credentials()
         try:
             self.p.user_login(creds[1], creds[2])
@@ -25,22 +26,30 @@ class PiazzaQuestions(object):
         except Exception as e:
             return -1
 
-    """ Needed because of different character encoding that
-    can be used on piazza
-
-    Returns the same string with non printable characters removed
-    """
     def sanitize_input(self, string_value):
+        """Removes non-printable characters from string_value. This
+        is a necessary step before adding a question to the database.
+
+        Keyword arguments:
+            string_value -- input read from piazza
+
+        Returns:
+            string_value with non printable characters removed
+        """
         return "".join(s for s in string_value if s in string.printable)
 
-    """ Parse a question into answer, question, and answer choicesself.
-    question must be of form #answer# question[?.] (choice1) text (choice_n) text
-    ex) #A# Should arrays start at 1? (A) NO (B) still no (C) also no
-
-    Return -1 if question could not be parsed. If succesfully paresed, a tuple
-    is returned: (answer, question, choices)
-    """
     def parse_question(self, post):
+        """Parse a question into answer, question, and answer choicesself.
+        question must be of form #answer# question[?.] (choice1) text (choice_n) text
+        ex) #A# Should arrays start at 1? (A) NO (B) still no (C) also no
+
+        Keyword arguments:
+            post -- the question from piazza
+
+        Returns:
+            -1 if question could not be parsed. If succesfully paresed, a tuple
+            is returned: (answer, question, choices)
+        """
         # parse answer
         start = post.find("#")
         end = post[start + 1:].find("#")
@@ -69,14 +78,15 @@ class PiazzaQuestions(object):
 
         return (answer, question, choices)
 
-    """ Finds all posts on piazza that contain submitted quiz
-    questions and writes them to the database. A post is recognized
-    as a submitted questions post if the key words 'week', 'submit',
-    and 'quiz' are found in the post's title
-
-    Return -1 if fails to get all posts
-    """
     def find_all_quiz_questions(self):
+        """Finds all posts on piazza that contain submitted quiz
+        questions and writes them to the database. A post is recognized
+        as a submitted questions post if the key words 'week', 'submit',
+        and 'quiz' are found in the post's title
+
+        Returns:
+            -1 if fails to get all posts
+        """
         try:
             all_posts = self.class_id.iter_all_posts()
         except Exception as e:
@@ -117,14 +127,19 @@ class PiazzaQuestions(object):
                             post_nr, 0))
                     self.dbManager.store_questions(all_questions)
 
-
-    """ Attempt to login user for the first time and then
-    set up their course. If succesful, will store user credentials
-    and then search piazza for all quiz questions.
-
-    Return 0 if login fails, -1 if class id is incorrect
-    """
     def first_time_login(self, username, password, class_id):
+        """Attempt to login user for the first time and then
+        set up their course. If succesful, will store user credentials
+        and then search piazza for all quiz questions.
+
+        Keyword arguments:
+            username -- user's piazza email
+            password -- user's piazza password
+            class_id -- piazza course id for class
+
+        Returns:
+            0 if login fails, -1 if class id is incorrect
+        """
         try:
             self.p.user_login(username, password)
         except Exception as e:
