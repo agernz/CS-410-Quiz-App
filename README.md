@@ -28,8 +28,8 @@ python main.py
 Contains constants used in the program.
 
 ### DBManager.py
-Handles all database interractions for the program using sqlite. 
-The databse is used to store/retreive user's piazza credentials, quizzes, and all quiz questions. 
+Handles all database interactions for the program using sqlite. 
+The database is used to store/retrieve user's piazza credentials, quizzes, and all quiz questions. 
   
 ### PiazzaQuestions.py
 Wrapper for the unofficial piazza API. Used to login the user, check for new quizzes on piazza, 
