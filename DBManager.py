@@ -34,6 +34,34 @@ class DBManager(object):
                 # could print something out here
                 pass
 
+    def create_tables(self):
+        """Creates database tables FIRST_USE, QUIZZES, and QUESTIONS
+
+        Returns:
+            -1 on error
+        """
+        try:
+            last_id = 0
+            self.cur.execute("""CREATE TABLE IF NOT EXISTS
+                FIRST_USE ( ID INT PRIMARY KEY NOT NULL,
+                            USER TEXT, PWD TEXT,
+                            COURSEID TEXT)""")
+            self.cur.execute("""CREATE TABLE IF NOT EXISTS
+                QUESTIONS ( `ANSWER` TEXT,
+                            `QUESTION` TEXT,
+                            `CHOICES` INT,
+                            `NR` INTEGER,
+                            `MARKED` INTEGER )""")
+            self.cur.execute("""CREATE TABLE IF NOT EXISTS
+                QUIZZES (`ID` INT NOT NULL,
+                        `NAME` TEXT,
+                        `CREATED` TEXT,
+                        PRIMARY KEY(`ID`) )""")
+            self.db.commit()
+        except Exception as e:
+            self.log('Failed to create database tables'.format(username), e)
+            return -1;
+
     def store_credentials(self, username, password, course_id):
         """Writes user credentials to database table FIRST_USE
 
@@ -223,11 +251,16 @@ class DBManager(object):
             return -1;
 
     def is_first_time(self):
-        """Checks if a user has logged in before
+        """Checks if a user has logged in before, an exception also
+        signifies first time becuase database tables have not yet been
+        created
 
         Returns:
             True if user's has no stored credentials, False if user has
             logged in before
         """
-        cursor = self.cur.execute("""SELECT USER from FIRST_USE""")
-        return cursor.fetchone() is None
+        try:
+            cursor = self.cur.execute("""SELECT USER from FIRST_USE""")
+            return cursor.fetchone() is None
+        except Exception as e:
+            return True;
