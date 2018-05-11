@@ -23,7 +23,7 @@ python main.py
 
 ## Description of Files
 See function docstrings in py files for detailed descriptions
-```bash
+
 Constants.py:
   Contains constants used in the program.
 DBManager.py:
@@ -38,7 +38,6 @@ config.toml
   Used by metapy for searching and topic mining.
 stopwords.txt
   Contains a list of words that metapy will ignore during searching and topic mining.
-```
   
 ## Important
 At the time of this writing, piazza weekly quiz post were titled 'Week# submitted quiz questions' - where # is a number. 
