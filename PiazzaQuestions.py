@@ -1,7 +1,6 @@
 from piazza_api import Piazza
 from DBManager import *
 from Constants import *
-import sqlite3 as sql
 import string
 
 class PiazzaQuestions(object):
@@ -78,6 +77,20 @@ class PiazzaQuestions(object):
 
         return (answer, question, choices)
 
+    def is_quiz_post(self, post_title):
+        """
+        Keyword arguments:
+            post_title -- the piazza post's title
+
+        Returns:
+            True if this is a quiz post, false if it is any other kind
+            of post
+        """
+        return (post_title.find("week") != -1
+            and post_title.find("submit") != -1
+            and post_title.find("quiz") != -1)
+
+
     def find_all_quiz_questions(self):
         """Finds all posts on piazza that contain submitted quiz
         questions and writes them to the database. A post is recognized
@@ -95,37 +108,35 @@ class PiazzaQuestions(object):
         for post in all_posts:
             date = post['history'][0]['created']
             title = (post['history'][0]['subject']).lower()
-            if (title.find("week") != -1
-                and title.find("submit") != -1
-                and title.find("quiz") != -1):
-                    print("Found: ", date[:date.find('T')], title)
-                    post_nr = post['nr']
-                    # add quiz
-                    result = self.dbManager.store_quiz(post_nr, date, title)
-                    if (result == -1):
-                        print("Failed to add quiz")
-                        continue
-                    elif (result == 0):
-                        print("Quizzes are up to date")
+            if (self.is_quiz_post(title)):
+                print("Found: ", date[:date.find('T')], title)
+                post_nr = post['nr']
+                # add quiz
+                result = self.dbManager.store_quiz(post_nr, date, title)
+                if (result == -1):
+                    print("Failed to add quiz")
+                    continue
+                elif (result == 0):
+                    print("Quizzes are up to date")
+                    break
+                # add questions
+                all_questions = []
+                content = post['history'][0]['content'][3:]
+                while(True):
+                    i = content.find("<br")
+                    if (i == -1):
                         break
-                    # add questions
-                    all_questions = []
-                    content = post['history'][0]['content'][3:]
-                    while(True):
-                        i = content.find("<br")
-                        if (i == -1):
-                            break
-                        question = content[:i]
-                        content = content[i:]
-                        content = content[content.find(">") + 1:]
-                        question_values = self.parse_question(question)
-                        if (question_values != -1):
-                            all_questions.append(
-                            (self.sanitize_input(question_values[0]),
-                            self.sanitize_input(question_values[1]),
-                            self.sanitize_input(question_values[2]),
-                            post_nr, 0))
-                    self.dbManager.store_questions(all_questions)
+                    question = content[:i]
+                    content = content[i:]
+                    content = content[content.find(">") + 1:]
+                    question_values = self.parse_question(question)
+                    if (question_values != -1):
+                        all_questions.append(
+                        (self.sanitize_input(question_values[0]),
+                        self.sanitize_input(question_values[1]),
+                        self.sanitize_input(question_values[2]),
+                        post_nr, 0))
+                self.dbManager.store_questions(all_questions)
 
     def first_time_login(self, username, password, class_id):
         """Attempt to login user for the first time and then
